@@ -1,7 +1,9 @@
-﻿using DotNetAuth.Data;
+﻿using Azure;
+using DotNetAuth.Data;
 using DotNetAuth.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -21,7 +23,7 @@ namespace DotNetAuth.Controllers
         private readonly MyDbContext dbContext;
         private readonly IConfiguration configuration;
 
-        public UsersController(MyDbContext dbContext)
+        public UsersController(MyDbContext dbContext, IConfiguration configuration)
         {
             this.dbContext = dbContext;
             this.configuration = configuration;
@@ -56,7 +58,7 @@ namespace DotNetAuth.Controllers
 
 
         [HttpPost]
-        [Route("Login")]
+        [Route("Login")] /* it is called as Attribute based routing */
         public IActionResult Login(Login login)
         {
           
@@ -131,6 +133,76 @@ namespace DotNetAuth.Controllers
                 return Ok(user);
             }
         }
+
+        [Authorize]
+        [HttpPatch("{id}")]
+        
+
+        public IActionResult UpdateUser(int id, [FromBody] JsonPatchDocument<User> user)
+        {
+            var userData = dbContext.Users.FirstOrDefault(x => x.UserId == id);
+            if (userData == null)
+            {
+                return NotFound("user not exist");
+            }
+            else
+            {
+
+                user.ApplyTo(userData);
+
+                dbContext.SaveChanges();
+
+                return Ok(new {message = "sucessfully updated", userUpdatedData = userData });
+
+            }
+        }
+
+        //[Authorize]
+        //[HttpPatch("{id}")]
+        //[Route("UpdateUserAllProperty")]
+
+        //public IActionResult UpdateUserAllProperty(int id, [FromBody] User user)
+        //{
+        //    var userData = dbContext.Users.FirstOrDefault(x => x.UserId == id);
+        //    if (userData == null)
+        //    {
+        //        return NotFound("user not exist");
+        //    }
+        //    else
+        //    {
+
+        //        userData.FirstName = user.FirstName;
+        //        userData.LastName = user.LastName;
+        //        userData.Email = user.Email;
+        //        userData.Password = user.Password;
+        //        userData.IsActive = user.IsActive;
+        //        userData.CreatedAt = user.CreatedAt;
+
+        //        dbContext.SaveChanges();
+
+        //        return Ok(new { message = "sucessfully updated", userUpdatedData = userData });
+
+        //    }
+        //}
+
+        [Authorize]
+        [HttpDelete("{id}")]
+
+        public IActionResult removeUser(int id)
+        {
+            var findUser = dbContext.Users.FirstOrDefault(x => x.UserId == id);
+            if(findUser != null)
+            {
+                dbContext.Users.Remove(findUser);
+
+                dbContext.SaveChanges();
+
+                return Ok(new {message = "user Successfully removed",removedUser = findUser });
+            }
+
+            return NotFound(new { message = "user does not found in the system" });
+        }
+
 
 
     }
